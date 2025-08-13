@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QR Code Generator</title>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <style>
+    :root {
+      --bg: #0f172a; --panel: #111827; --muted: #9ca3af; --accent: #22d3ee; --white: #fff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: radial-gradient(1200px 600px at 20% 0%, #0b1220, var(--bg));
+      color: var(--white); font: 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Arial;
+      min-height: 100vh; display: grid; place-items: center; padding: 24px;
+    }
+    .app { width: 100%; max-width: 860px; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; }
+    .card {
+      background: rgba(17,24,39,0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35); backdrop-filter: blur(6px);
+    }
+    h1 { font-size: 22px; margin: 0 0 8px; letter-spacing: 0.2px; }
+    p.sub { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+    label { display:block; margin: 12px 0 6px; color: #cbd5e1; font-size: 13px; }
+    input[type="text"], textarea, select {
+      width: 100%; background: #0b1220; color: var(--white); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px; padding: 10px 12px; outline: none;
+    }
+    .row { display:flex; gap: 12px; align-items: center; }
+    .row > * { flex: 1; }
+    .actions { display:flex; gap: 10px; margin-top: 12px; }
+    button {
+      border: none; background: var(--accent); color: #083344; font-weight: 600; padding: 10px 14px;
+      border-radius: 12px; cursor: pointer;
+    }
+    button.secondary { background: transparent; color: var(--white); border: 1px solid rgba(255,255,255,0.18); }
+    #qrcode-wrap { display: grid; place-items: center; min-height: 360px; background: #ffffff; border: 1px dashed rgba(255,255,255,0.12); border-radius: 14px; padding: 10px; }
+    #qrcode img, #qrcode canvas { image-rendering: pixelated; border-radius: 8px; }
+    footer { margin-top: 8px; color: var(--muted); font-size: 12px; text-align:center; }
+    @media (max-width: 780px) { .app { grid-template-columns: 1fr; } }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <h1>QR Code Generator</h1>
+      <p class="sub">Type any text, URL, Wi-Fi string, etc., then generate and download.</p>
+
+      <label for="text">Text / URL</label>
+      <textarea id="text" rows="4" placeholder="https://example.com"></textarea>
+
+      <div class="row">
+        <div>
+          <label for="size">Size</label>
+          <select id="size">
+            <option>128</option><option selected>256</option><option>384</option><option>512</option>
+          </select>
+        </div>
+        <div>
+          <label for="ecc">Error correction</label>
+          <select id="ecc">
+            <option value="L">L (7%)</option>
+            <option value="M" selected>M (15%)</option>
+            <option value="Q">Q (25%)</option>
+            <option value="H">H (30%)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="dark">Foreground</label>
+          <input id="dark" type="color" value="#000000" />
+        </div>
+        <div>
+          <label for="light">Background</label>
+          <input id="light" type="color" value="#ffffff" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btn-gen">Generate</button>
+        <button class="secondary" id="btn-download" disabled>Download PNG</button>
+        <button class="secondary" id="btn-clear">Clear</button>
+      </div>
+      <footer>Tip: For Wi-Fi, use <code>WIFI:T:WPA;S:MySSID;P:MyPassword;;</code></footer>
+    </div>
+
+    <div class="card" id="qrcode-wrap">
+      <div id="qrcode"></div>
+    </div>
+  </div>
+
+  <!-- QR library (tiny) -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    const el = (id) => document.getElementById(id);
+    const $text = el('text'), $size = el('size'), $ecc = el('ecc'), $dark = el('dark'), $light = el('light');
+    const $wrap = el('qrcode'), $dl = el('btn-download');
+
+    function eccToLevel(code) {
+      return {L: QRCode.CorrectLevel.L, M: QRCode.CorrectLevel.M, Q: QRCode.CorrectLevel.Q, H: QRCode.CorrectLevel.H}[code] || QRCode.CorrectLevel.M;
+    }
+    function generateQR() {
+      const text = $text.value.trim();
+      if (!text) { alert('Please enter some text or a URL.'); return; }
+      $wrap.innerHTML = '';
+      const qrcode = new QRCode($wrap, {
+        text,
+        width: parseInt($size.value, 10) || 256,
+        height: parseInt($size.value, 10) || 256,
+        colorDark: $dark.value || '#000000',
+        colorLight: $light.value || '#ffffff',
+        correctLevel: eccToLevel($ecc.value)
+      });
+      setTimeout(() => { $dl.disabled = false; }, 50);
+      try { localStorage.setItem('qr.last', JSON.stringify({ text, size: $size.value, ecc: $ecc.value, dark: $dark.value, light: $light.value })); } catch {}
+    }
+    function downloadPNG() {
+      const canvas = $wrap.querySelector('canvas');
+      let dataURL = canvas ? canvas.toDataURL('image/png') : ($wrap.querySelector('img')?.src || null);
+      if (!dataURL) { alert('Please generate a QR first.'); return; }
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+      a.href = dataURL; a.download = `qr-${ts}.png`; document.body.appendChild(a); a.click(); a.remove();
+    }
+    function clearAll() { $text.value = ''; $wrap.innerHTML = ''; $dl.disabled = true; try { localStorage.removeItem('qr.last'); } catch {} }
+    try { const last = JSON.parse(localStorage.getItem('qr.last') || 'null'); if (last) { $text.value = last.text || ''; $size.value = String(last.size || 256); $ecc.value = last.ecc || 'M'; $dark.value = last.dark || '#000000'; $light.value = last.light || '#ffffff'; } } catch {}
+    el('btn-gen').addEventListener('click', generateQR);
+    el('btn-download').addEventListener('click', downloadPNG);
+    el('btn-clear').addEventListener('click', clearAll);
+    document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') generateQR(); });
+  </script>
+</body>
+</html>
